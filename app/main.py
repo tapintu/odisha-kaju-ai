@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import PlainTextResponse, HTMLResponse
 from pydantic import BaseModel
@@ -73,25 +74,12 @@ async def approval_resolve(approval_id:int,x:ApprovalAnswer):
         raise HTTPException(404,"Approval not found")
     a=pending[0]
     db.resolve_approval(approval_id,x.answer)
-    response = await call_openai(a["phone"],
-        "Continue the customer conversation based on the owner's decision.",
-        owner_answer=x.answer)
+    response = await call_openai(a["phone"],"Continue the customer conversation based on the owner's decision.",owner_answer=x.answer)
     db.add_message(a["phone"],"assistant",response)
     await send_text(a["phone"],response)
     return {"ok":True,"sent":response}
 
 @app.get("/", response_class=HTMLResponse)
 def home():
-    return """<!doctype html><html><head><meta name=viewport content='width=device-width,initial-scale=1'>
-    <style>body{font-family:system-ui;max-width:760px;margin:35px auto;padding:0 16px}code{background:#eee;padding:2px 5px}li{margin:10px 0}</style></head>
-    <body><h1>Odisha Kaju AI Sales Assistant</h1>
-    <p>Backend is running.</p>
-    <ul>
-      <li><code>GET /health</code></li>
-      <li><code>POST /simulate</code> — test customer messages without WhatsApp</li>
-      <li><code>GET /api/products</code></li>
-      <li><code>GET /api/customers</code></li>
-      <li><code>GET /api/approvals</code></li>
-      <li><code>GET/POST /whatsapp/webhook</code></li>
-    </ul>
-    <p>Use <code>/docs</code> for the interactive API screen.</p></body></html>"""
+    path = Path(__file__).with_name("dashboard.html")
+    return HTMLResponse(path.read_text(encoding="utf-8"))
